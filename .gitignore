@@ -1,0 +1,14 @@
+# Python System Files
+__pycache__/
+*.pyc
+
+# Data Files (Keep data local!)
+data/
+*.csv
+
+# OS Files
+.DS_Store
+
+# Virtual Environment (if you use one)
+venv/
+.env
