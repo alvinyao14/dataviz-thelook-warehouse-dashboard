@@ -3,19 +3,22 @@
 An interactive data application to track logistics performance, identify shipping bottlenecks, and calculate revenue leakage for TheLook Ecommerce.
 
 ## Streamlit App Structure
-│
-├── main.py		        # The "Container" (Navigation & Layout)
-├── data_loader.py	    # The script to load/cache data
-├── requirements.txt	
+This app follows a modular architecture. Please do not dump code into `main.py`.
+
+### File Structure
+```text
+thelook-warehouse-dashboard/
+├── main.py                  # Entry point (Navigation & Layout)
+├── data_loader.py           # Data processing & Caching
+├── requirements.txt         # Python dependencies
 ├── data/
-│   └── BigQuery_Output_20251206_v1.csv	# The output from BigQuery
-│
-└── tabs/
-    ├── __init__.py
-    ├── tab_exceptions.py 
-    ├── tab_network.py	
-    ├── tab_revenue.py
-    └── tab_dead_stock.py 
+│   └── warehouse_data.csv   # (IGNORED BY GIT - Must add manually!)
+└── tabs/                    # Feature Modules
+    ├── tab_exceptions.py    # (Ops) Late deliveries & risk flags
+    ├── tab_network.py       # (Logistics) Geo-maps
+    ├── tab_revenue.py       # (Finance) Revenue leakage
+    └── tab_dead_stock.py    # (Inventory) Aging stock
+```
 
 ## Getting Started
 
