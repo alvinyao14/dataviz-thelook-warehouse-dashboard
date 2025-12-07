@@ -47,3 +47,12 @@ pip install -r requirements.txt
 ```bash
 streamlit run main.py
 ```
+
+## Developer Rules
+
+Each tab file must contain a primary render function that accepts the dataframe:
+```python
+def render_tab(df):
+    st.header("My Feature Title")
+    # Your logic here
+```
