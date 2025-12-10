@@ -1,7 +1,7 @@
 import streamlit as st
 from data_loader import load_data
 
-# Import the tab modules (These files exist but are empty for now)
+# Import the tab modules
 from tabs import tab_exceptions, tab_network, tab_revenue, tab_dead_stock
 
 st.set_page_config(page_title="TheLook Warehouse Dashboard", layout="wide")
@@ -21,8 +21,6 @@ if not df.empty:
     ])
 
     # 3. Render Tabs
-    # Each teammate will edit their specific file in the 'tabs/' folder.
-    
     with tab1:
         tab_exceptions.render_tab(df)
         
