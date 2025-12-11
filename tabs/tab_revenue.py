@@ -42,7 +42,10 @@ def render_tab(df: pd.DataFrame) -> None:
         Master dataset loaded by data_loader.py
     """
 
-    st.title("Revenue Leakage Monitor")
+    st.header("Revenue Leakage Monitor")
+    st.markdown("""
+        **Overview:** This tab calculates and visualizes money lost to returns.
+    """)
 
     # ------------------------------------------------------------------
     # 1. Filter to revenue lost rows
@@ -82,14 +85,12 @@ def render_tab(df: pd.DataFrame) -> None:
     min_date = min_ts.date()
     max_date = max_ts.date()
 
-    # ------------------------------------------------------------------
-    # 3. Tab-Specific Filters (Moved from Sidebar)
-    # ------------------------------------------------------------------
-    
-    # We use an expander to keep the UI clean
-    with st.expander("🔎 Filter Revenue Data", expanded=True):
+    # =================================================================
+    # Filters
+    # =================================================================
+       
+    with st.expander("Filters", expanded=True):
         
-        # Create two rows of columns for better layout
         row1_col1, row1_col2 = st.columns(2)
         row2_col1, row2_col2 = st.columns(2)
 
@@ -150,9 +151,15 @@ def render_tab(df: pd.DataFrame) -> None:
         st.warning("No rows match the current filters.")
         return
 
-    # ------------------------------------------------------------------
+    # =================================================================
     # 4. KPI Cards
-    # ------------------------------------------------------------------
+    # =================================================================
+
+    st.markdown(
+        "These metrics quantify **money lost due to cancelled and returned orders** "
+        "for the selected warehouses, categories, and time period."
+    )
+
     total_lost_revenue = (
         lost_df["sale_price"].sum() if "sale_price" in lost_df.columns else 0.0
     )
@@ -172,15 +179,11 @@ def render_tab(df: pd.DataFrame) -> None:
     c3.metric("Sunk Cost", f"${total_cost:,.0f}")
     c4.metric("Orders w/ Leakage", f"{num_leak_orders:,}")
 
-    st.markdown(
-        "These metrics quantify **money lost due to cancelled and returned orders** "
-        "for the selected warehouses, categories, and time period."
-    )
-
     # ------------------------------------------------------------------
     # 5. Lost Revenue by DC & Status (stacked bar)
     # ------------------------------------------------------------------
-    st.subheader("Lost Revenue by Distribution Center & Status")
+    st.divider()
+    st.subheader("Lost Revenue by Distribution Center")
 
     if {"dc_name", "status", "sale_price"}.issubset(lost_df.columns):
         dc_status = (
@@ -200,7 +203,8 @@ def render_tab(df: pd.DataFrame) -> None:
                 "sale_price": "Lost Revenue ($)",
                 "status": "Status",
             },
-            title="Lost Revenue by Distribution Center (Stacked by Status)",
+            color_discrete_sequence=['#FFA500']
+
         )
         fig_dc.update_layout(
             xaxis_title="Distribution Center",
@@ -213,10 +217,10 @@ def render_tab(df: pd.DataFrame) -> None:
             "cannot plot DC breakdown."
         )
 
-    # ------------------------------------------------------------------
-    # 6. Category breakdown (bar or treemap)
-    # ------------------------------------------------------------------
-    st.subheader("Which Product Categories Lose the Most Money?")
+# ------------------------------------------------------------------
+# 6. Category breakdown (bar or treemap)
+# ------------------------------------------------------------------
+    st.subheader("Lost Revenue by Product Category")
 
     if {"category", "sale_price"}.issubset(lost_df.columns):
         cat_rev = (
@@ -237,25 +241,37 @@ def render_tab(df: pd.DataFrame) -> None:
                 cat_rev,
                 x="category",
                 y="sale_price",
+                # Optional: Use the same color scale for the bar chart too for consistency
+                color="sale_price",
+                color_continuous_scale="YlOrRd",
                 labels={
                     "category": "Category",
                     "sale_price": "Lost Revenue ($)",
                 },
-                title="Lost Revenue by Product Category",
             )
             fig_cat.update_layout(
                 xaxis_title="Category",
                 yaxis_title="Lost Revenue ($)",
+                plot_bgcolor="#FFFFFF",
+                paper_bgcolor="#FFFFFF",
             )
             st.plotly_chart(fig_cat, use_container_width=True)
-        else:
+            
+        else: # TREEMAP VIEW
             fig_cat = px.treemap(
                 cat_rev,
-                path=["category"],
+                path=[px.Constant(" "),"category"],
                 values="sale_price",
+                color="sale_price",              # Must map to a number for continuous scales
+                color_continuous_scale="YlOrRd", # The Yellow-Orange-Red palette
                 title="Lost Revenue by Product Category (Treemap)",
             )
-            st.plotly_chart(fig_cat, use_container_width=True)
+            fig_cat.update_traces(root_color="rgba(0,0,0,0)")
+            fig_cat.update_layout(
+                plot_bgcolor="#FFFFFF",
+                paper_bgcolor="#FFFFFF",
+            )
+            st.plotly_chart(fig_cat, use_container_width=True, theme=None)
 
     else:
         st.info(
@@ -289,5 +305,5 @@ def render_tab(df: pd.DataFrame) -> None:
         .reset_index(drop=True)
     )
 
-    st.caption("Showing up to 200 orders with the highest lost revenue.")
+    st.markdown("Showing up to 200 orders with the highest lost revenue.")
     st.dataframe(detail_df, use_container_width=True)

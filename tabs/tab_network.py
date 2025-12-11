@@ -18,10 +18,7 @@ def render_tab(df):
 
     st.header("Delivery Network Topology")
     st.markdown("""
-    **Purpose:** Identify shipping inefficiencies by mapping the relationship between
-    Distribution Centers and Customer locations.
-
-    **Key Insight:** If a distant DC is fulfilling nearby orders, you're wasting time and money.
+    **Overview:** This tab visualizes the network of delivery destinations by distribution center.
     """)
 
     # ============================================================
@@ -45,31 +42,50 @@ def render_tab(df):
     # ============================================================
     # FILTERS
     # ============================================================
-    st.markdown("### Network Filters")
+    with st.expander("Filters", expanded=True):
+        
+        col1, col2 = st.columns(2)
 
-    col1, col2 = st.columns(2)
+        # Define dc_options OUTSIDE the column so it's available globally if needed
+        dc_options = sorted(df_clean['dc_name'].dropna().unique().tolist())
 
-    with col1:
-        # Filter by Distribution Center
-        all_dcs = ['All'] + sorted(df_clean['dc_name'].dropna().unique().tolist())
-        selected_dc = st.selectbox("Select Distribution Center", all_dcs)
+        with col1:
+            # Multiselect Widget
+            selected_dcs = st.multiselect(
+                "Select Distribution Centers", 
+                options=dc_options,
+                default=dc_options, 
+                key="net_dc_select"
+            )
 
-    if selected_dc != 'All':
-        df_filtered = df_clean[df_clean['dc_name'] == selected_dc].copy()
+        # --- LOGIC: Filter Dataframe ---
+        if selected_dcs:
+            df_filtered = df_clean[df_clean['dc_name'].isin(selected_dcs)].copy()
+        else:
+            df_filtered = df_clean.copy() # Fallback to ALL if empty
+
+        with col2:
+            # Safety: Ensure slider doesn't crash if filtered data is very small
+            available_rows = len(df_filtered)
+            safe_max_value = max(available_rows, 100) 
+            
+            max_orders = st.slider(
+                "Max Orders to Display (Map Only)", # Clarified Label
+                min_value=100,
+                max_value=safe_max_value,
+                value=min(5000, available_rows),
+                step=500,
+                key="net_slider",
+                help="Limits the points on the map for performance. Metrics below still use ALL data."
+            )
+
+    # --- LOGIC: Final Slice for Display ---
+    # FIX: Use .sample() instead of .head() to randomize the selection.
+    # random_state=42 ensures the map doesn't 'flicker' on every interaction.
+    if len(df_filtered) > max_orders:
+        df_display = df_filtered.sample(n=max_orders, random_state=42).copy()
     else:
-        df_filtered = df_clean.copy()
-
-    with col2:
-        # Sample size control for performance (optional)
-        max_orders = st.slider(
-            "Max Orders to Display",
-            min_value=100,
-            max_value=len(df_filtered),
-            value=min(5000, len(df_filtered)),
-            step=500
-        )
-
-    df_display = df_filtered.head(max_orders).copy()
+        df_display = df_filtered.copy()
 
     # ============================================================
     # KEY METRICS
@@ -93,11 +109,12 @@ def render_tab(df):
     # ============================================================
     # MAIN VISUALIZATION: PYDECK MAP
     # ============================================================
-    st.subheader("Distribution Center → Customer Flow Map")
+    st.divider()   
+    st.subheader("Distribution Center to Destination Location Dot Map")
 
     # Prepare Customer data - each point is an order
     customer_data = df_display[['customer_lat', 'customer_long', 'dc_name', 'order_id']].copy()
-    customer_data['color'] = customer_data['dc_name'].apply(lambda x: get_dc_color(x, all_dcs))
+    customer_data['color'] = customer_data['dc_name'].apply(lambda x: get_dc_color(x, dc_options))
 
     # Calculate optimal zoom level and center
     center_lat = customer_data['customer_lat'].mean()
@@ -132,7 +149,7 @@ def render_tab(df):
 
     for dc_name in unique_dcs:
         dc_orders = customer_data[customer_data['dc_name'] == dc_name]
-        dc_color_rgb = get_dc_color(dc_name, all_dcs)
+        dc_color_rgb = get_dc_color(dc_name, dc_options)
 
         # Use the DC's actual color for high-density hexagons
         base_color = dc_color_rgb[:3]  # RGB without alpha
@@ -192,7 +209,7 @@ def render_tab(df):
     st.pydeck_chart(deck)
 
     # Create color legend for DCs grouped by region
-    st.markdown("### Distribution Center Color Legend")
+    st.markdown("#### Distribution Center Color Legend")
 
     # Define regional groupings
     regions = {
@@ -224,12 +241,14 @@ def render_tab(df):
         for idx, dc in enumerate(dcs):
             if dc in df_filtered['dc_name'].unique():
                 with cols[idx]:
-                    color = get_dc_color(dc, all_dcs)
+                    color = get_dc_color(dc, dc_options)
                     color_hex = '#{:02x}{:02x}{:02x}'.format(color[0], color[1], color[2])
+                    
                     st.markdown(
                         f'<div style="display:flex; align-items:center; margin-bottom:8px;">'
-                        f'<div style="width:30px; height:30px; background-color:{color_hex}; border:2px solid black; margin-right:10px; border-radius:4px;"></div>'
-                        f'<span style="font-size:14px;">{dc}</span>'
+                        f'<div style="width:30px; height:30px; min-width:30px; flex-shrink:0; ' 
+                        f'background-color:{color_hex}; border:2px solid black; margin-right:10px; border-radius:4px;"></div>'
+                        f'<span style="font-size:14px; line-height:1.2;">{dc}</span>' # Added line-height for better wrapping text
                         f'</div>',
                         unsafe_allow_html=True
                     )
@@ -258,13 +277,14 @@ def render_tab(df):
     # ============================================================
     # VISUALIZATION: Order Volume vs Average Distance
     # ============================================================
+    st.divider()   
     st.subheader("Order Volume vs Average Distance by Distribution Center")
 
     # Create dual-axis chart showing both order volume and average distance
     if 'Avg Distance (km)' in dc_performance.columns:
         # Add DC colors to the performance dataframe
         dc_performance['color'] = dc_performance['dc_name'].apply(
-            lambda x: '#{:02x}{:02x}{:02x}'.format(*get_dc_color(x, all_dcs)[:3])
+            lambda x: '#{:02x}{:02x}{:02x}'.format(*get_dc_color(x, dc_options)[:3])
         )
 
         # Create figure with secondary y-axis
@@ -321,8 +341,8 @@ def render_tab(df):
                 overlaying='y',
                 side='right'
             ),
-            plot_bgcolor='#F5F5F5',
-            paper_bgcolor='#F5F5F5',
+            plot_bgcolor='#FFFFFF',
+            paper_bgcolor='#FFFFFF',
             height=500,
             legend=dict(
                 orientation='h',
@@ -343,16 +363,18 @@ def render_tab(df):
     # ============================================================
     # ANALYSIS: DC Performance Table
     # ============================================================
+    st.divider()   
     st.subheader("Distribution Center Performance")
     st.dataframe(dc_performance, use_container_width=True)
 
     # ============================================================
     # INEFFICIENCY DETECTION (Optional Advanced Feature)
     # ============================================================
-    with st.expander("Show Potential Inefficiencies"):
+    st.divider()   
+    with st.expander("**Show Potential Inefficiencies**"):
         st.markdown("""
-        **Definition:** Orders where the shipping distance exceeds the median by 50%+
-        may indicate inefficient DC assignment.
+        **Definition:** This section shows where the shipping distance exceeds the median by 50% or more,
+                    and may indicate inefficient DC assignment.
         """)
 
         df_with_distance = df_filtered.copy()
@@ -383,7 +405,7 @@ def render_tab(df):
 # HELPER FUNCTIONS
 # ============================================================
 
-def get_dc_color(dc_name, all_dcs):
+def get_dc_color(dc_name, dc_options):
     """
     Assign a unique color to each DC for visual consistency.
     Colors are logically assigned based on geographic/regional grouping.
@@ -423,7 +445,7 @@ def get_dc_color(dc_name, all_dcs):
     ]
 
     try:
-        idx = all_dcs.index(dc_name) % len(fallback_colors)
+        idx = dc_options.index(dc_name) % len(fallback_colors)
         return fallback_colors[idx]
     except (ValueError, AttributeError):
         return [128, 128, 128, 200]  # Gray default

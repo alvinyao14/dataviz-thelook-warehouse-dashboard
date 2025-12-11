@@ -7,11 +7,8 @@ from datetime import datetime, timedelta
 def render_tab(df):
     """
     Exception Management Tab
-    Category: Operational Triage & Incident Response
 
     Purpose: Identify orders requiring immediate intervention based on conditional logic.
-    A 95% success rate still means 5% of customers are angry - this tab helps managers
-    know which specific orders need action NOW.
 
     Key Rules:
     - Rule A (Processing Lag): Flag if status = 'Processing' AND (Current_Date - created_at) > 3 Days
@@ -21,12 +18,12 @@ def render_tab(df):
     - order_id, created_at, shipped_at, delivered_at, status
     """
 
-    st.header("Exception Management & Operational Triage")
+    st.header("**Exception Management & Operational Triage**")
     st.markdown("""
-    **Purpose:** Identify orders requiring immediate intervention. Don't let exceptions hide in averages.
+        **Overview:** This tab identify orders requiring immediate intervention based on the following metrics:
+        - **Processing Lag**: Orders that are stuck in processing for more than 3 days.
+        - **Carrier Lag**: Orders that have been shipped but not delivered for more than 7
 
-    **Key Insight:** Aggregated metrics like "Average Shipping Time" hide failures.
-    This dashboard surfaces the specific orders that need action RIGHT NOW.
     """)
 
     # ============================================================
@@ -110,6 +107,7 @@ def render_tab(df):
     # ============================================================
     # KEY METRICS - RED ALERT COUNTERS
     # ============================================================
+    
     st.subheader("Alert Counters")
 
     # Calculate exception counts
@@ -124,38 +122,37 @@ def render_tab(df):
     with col1:
         st.metric(
             "Total Exceptions",
-            f"{total_exceptions:,}",
-            delta=f"{exception_rate:.1f}% of orders",
-            delta_color="inverse"
+            f"{total_exceptions:,}"
+
         )
+        st.markdown(f"{exception_rate:.1f}% of orders")
 
     with col2:
         st.metric(
             "Processing Lag",
-            f"{processing_lag_count:,}",
-            delta=">3 days in processing",
-            delta_color="inverse"
+            f"{processing_lag_count:,}"
         )
+        st.markdown("3+ days in processing")
 
     with col3:
         st.metric(
             "Carrier Lag",
-            f"{carrier_lag_count:,}",
-            delta=">7 days since creation",
-            delta_color="inverse"
+            f"{carrier_lag_count:,}"
         )
+        st.markdown("7+ days since creation")
 
     with col4:
         healthy_orders = total_orders - total_exceptions
         st.metric(
             "Healthy Orders",
-            f"{healthy_orders:,}",
-            delta=f"{(healthy_orders/total_orders*100):.1f}% of total"
+            f"{healthy_orders:,}"
         )
+        st.markdown(f"{(healthy_orders/total_orders*100):.1f}% of total")
 
     # ============================================================
     # EXCEPTION TREND OVER TIME
     # ============================================================
+    st.divider()
     st.subheader("Exception Trends Over Time")
 
     # Group by date to show trend
@@ -213,8 +210,8 @@ def render_tab(df):
             tickfont=dict(color='black'),
             titlefont=dict(color='black')
         ),
-        plot_bgcolor='#F5F5F5',
-        paper_bgcolor='#F5F5F5',
+        plot_bgcolor='#FFFFFF',
+        paper_bgcolor='#FFFFFF',
         height=400,
         hovermode='x unified',
         font=dict(color='black'),
@@ -229,7 +226,7 @@ def render_tab(df):
     )
 
     st.plotly_chart(fig_trend, use_container_width=True)
-    st.caption("**Purpose:** Track the volume of exceptions over time to identify trends and patterns. The stacked area shows how Processing Lag and Carrier Lag contribute to total exceptions.")
+    st.caption("**Description:** Track the volume of exceptions over time to identify trends and patterns. The stacked area shows how Processing Lag and Carrier Lag contribute to total exceptions.")
 
     # ============================================================
     # EXCEPTION RATE OVER TIME
@@ -274,8 +271,8 @@ def render_tab(df):
             tickfont=dict(color='black'),
             titlefont=dict(color='black')
         ),
-        plot_bgcolor='#F5F5F5',
-        paper_bgcolor='#F5F5F5',
+        plot_bgcolor='#FFFFFF',
+        paper_bgcolor='#FFFFFF',
         height=400,
         hovermode='x unified',
         font=dict(color='black'),
@@ -283,11 +280,12 @@ def render_tab(df):
     )
 
     st.plotly_chart(fig_rate, use_container_width=True)
-    st.caption("**Purpose:** Monitor the exception rate percentage to ensure it stays below your target threshold (5%). Spikes indicate periods requiring immediate attention.")
+    st.caption("**Description:** Monitor the exception rate percentage to ensure it stays below your target threshold (5%). Spikes indicate periods requiring immediate attention.")
 
     # ============================================================
     # STATUS DISTRIBUTION
     # ============================================================
+    st.divider()
     st.subheader("Order Status Distribution")
 
     # Status distribution (all orders)
@@ -300,8 +298,7 @@ def render_tab(df):
         y='Count',
         title='Order Status Distribution (All Orders)',
         labels={'Status': 'Order Status', 'Count': 'Number of Orders'},
-        color='Count',
-        color_continuous_scale='Blues'
+        color_discrete_sequence=['#FFA500']
     )
 
     fig_status.update_layout(
@@ -317,8 +314,8 @@ def render_tab(df):
             titlefont=dict(color='black'),
             title=dict(text='Number of Orders', font=dict(color='black'))
         ),
-        plot_bgcolor='#F5F5F5',
-        paper_bgcolor='#F5F5F5',
+        plot_bgcolor='#FFFFFF',
+        paper_bgcolor='#FFFFFF',
         font=dict(color='black'),
         showlegend=False
     )
@@ -330,11 +327,12 @@ def render_tab(df):
     ))
 
     st.plotly_chart(fig_status, use_container_width=True)
-    st.caption("**Purpose:** Understand the distribution of order statuses across your entire order base. This helps identify bottlenecks in the fulfillment pipeline.")
+    st.caption("**Description:** Understand the distribution of order statuses across your entire order base. This helps identify bottlenecks in the fulfillment pipeline.")
 
     # ============================================================
     # EXCEPTION SEVERITY HEATMAP
     # ============================================================
+    st.divider()    
     st.subheader("Exception Severity Heatmap")
 
     # Create bins for days since created
@@ -389,20 +387,21 @@ def render_tab(df):
                 tickfont=dict(color='black'),
                 titlefont=dict(color='black')
             ),
-            plot_bgcolor='#F5F5F5',
-            paper_bgcolor='#F5F5F5',
+            plot_bgcolor='#FFFFFF',
+            paper_bgcolor='#FFFFFF',
             height=400,
             font=dict(color='black')
         )
 
         st.plotly_chart(fig_heatmap, use_container_width=True)
-        st.caption("**Purpose:** Visualize exception severity patterns over time. Darker red indicates higher exception counts. Use this to identify which severity levels (days overdue) are trending up, helping you prioritize resource allocation.")
+        st.caption("**Description:** Visualize exception severity patterns over time. Darker red indicates higher exception counts. Use this to identify which severity levels (days overdue) are trending up, helping you prioritize resource allocation.")
     else:
         st.info("No exceptions to display in heatmap")
 
     # ============================================================
     # TOP PROBLEM ORDERS TABLE
     # ============================================================
+    st.divider()    
     st.subheader("Top 10 Most Overdue Orders")
 
     if not exception_data.empty:
@@ -418,7 +417,7 @@ def render_tab(df):
             use_container_width=True,
             hide_index=True
         )
-        st.caption("**Purpose:** Quickly identify the most critical orders that need immediate intervention. These are the orders that have been stuck the longest and represent the highest risk of customer dissatisfaction.")
+        st.caption("**Description:** Quickly identify the most critical orders that need immediate intervention. These are the orders that have been stuck the longest and represent the highest risk of customer dissatisfaction.")
     else:
         st.success("No overdue orders!")
 
@@ -512,7 +511,7 @@ def render_tab(df):
     # ============================================================
     # SUMMARY STATISTICS
     # ============================================================
-    st.markdown("---")
+    st.divider()
     st.subheader("Summary Statistics")
 
     col1, col2 = st.columns(2)

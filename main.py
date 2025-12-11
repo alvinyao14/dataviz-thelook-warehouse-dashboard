@@ -10,14 +10,14 @@ st.set_page_config(page_title="TheLook Warehouse Dashboard", layout="wide")
 df = load_data()
 
 if not df.empty:
-    st.title("📦 TheLook Warehouse Fulfillment Dashboard")
+    st.title("TheLook Warehouse Fulfillment Dashboard")
     
     # 2. Create the Tab Structure
     tab1, tab2, tab3, tab4= st.tabs([
-        "🚨 Fulfillment Exceptions", 
-        "🌍 Delivery Network",  
-        "🏚️ Dead Stock",
-        "💸 Revenue Leakage"
+        "Fulfillment Exception Flagging", 
+        "Fulfillment Center Delivery Network",  
+        "Dead Stock Analysis",
+        "Revenue Leakage in Returns"
     ])
 
     # 3. Render Tabs
