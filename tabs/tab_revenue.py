@@ -42,7 +42,7 @@ def render_tab(df: pd.DataFrame) -> None:
         Master dataset loaded by data_loader.py
     """
 
-    st.title("💸 Revenue Leakage Monitor")
+    st.title("Revenue Leakage Monitor")
 
     # ------------------------------------------------------------------
     # 1. Filter to revenue lost rows
@@ -83,68 +83,69 @@ def render_tab(df: pd.DataFrame) -> None:
     max_date = max_ts.date()
 
     # ------------------------------------------------------------------
-    # 3. Sidebar filters
+    # 3. Tab-Specific Filters (Moved from Sidebar)
     # ------------------------------------------------------------------
-    st.sidebar.header("Revenue Leakage Filters")
+    
+    # We use an expander to keep the UI clean
+    with st.expander("🔎 Filter Revenue Data", expanded=True):
+        
+        # Create two rows of columns for better layout
+        row1_col1, row1_col2 = st.columns(2)
+        row2_col1, row2_col2 = st.columns(2)
 
-    # Date range filter
-    date_range = st.sidebar.date_input(
-        "Order date range",
-        value=(min_date, max_date),
-        min_value=min_date,
-        max_value=max_date,
-    )
+        # --- Filter 1: Date Range (Top Left) ---
+        with row1_col1:
+            date_range = st.date_input(
+                "Order date range",
+                value=(min_date, max_date),
+                min_value=min_date,
+                max_value=max_date,
+                key="rev_date_filter" # Unique key prevents conflict with other tabs
+            )
 
+        # --- Filter 2: Distribution Center (Top Right) ---
+        with row1_col2:
+            if "dc_name" in lost_df.columns:
+                dc_options = sorted(lost_df["dc_name"].dropna().unique().tolist())
+            else:
+                dc_options = []
+            
+            selected_dcs = st.multiselect(
+                "Distribution Centers",
+                options=dc_options,
+                default=dc_options,
+                key="rev_dc_filter"
+            )
+
+        # --- Filter 3: Category (Bottom Left) ---
+        with row2_col1:
+            if "category" in lost_df.columns:
+                cat_options = sorted(lost_df["category"].dropna().unique().tolist())
+            else:
+                cat_options = []
+
+            selected_cats = st.multiselect(
+                "Product Categories",
+                options=cat_options,
+                default=cat_options,
+                key="rev_cat_filter"
+            )
+
+    # Date Logic
     if isinstance(date_range, tuple) and len(date_range) == 2:
         start_date, end_date = date_range
-        mask_date = (lost_df["order_date"] >= start_date) & (
-            lost_df["order_date"] <= end_date
-        )
+        mask_date = (lost_df["order_date"] >= start_date) & (lost_df["order_date"] <= end_date)
         lost_df = lost_df[mask_date]
 
-    # DC filter
-    if "dc_name" in lost_df.columns:
-        dc_options = sorted(lost_df["dc_name"].dropna().unique().tolist())
-    else:
-        dc_options = []
-
-    selected_dcs = st.sidebar.multiselect(
-        "Distribution Centers",
-        options=dc_options,
-        default=dc_options,
-    )
+    # DC Logic
     if selected_dcs and "dc_name" in lost_df.columns:
         lost_df = lost_df[lost_df["dc_name"].isin(selected_dcs)]
 
-    # Category filter
-    if "category" in lost_df.columns:
-        cat_options = sorted(lost_df["category"].dropna().unique().tolist())
-    else:
-        cat_options = []
-
-    selected_cats = st.sidebar.multiselect(
-        "Product Categories",
-        options=cat_options,
-        default=cat_options,
-    )
+    # Category Logic
     if selected_cats and "category" in lost_df.columns:
         lost_df = lost_df[lost_df["category"].isin(selected_cats)]
 
-    # Status filter (e.g., Cancelled vs Returned)
-    if "status" in lost_df.columns:
-        status_options = sorted(lost_df["status"].dropna().unique().tolist())
-    else:
-        status_options = []
-
-    selected_status = st.sidebar.multiselect(
-        "Order Status",
-        options=status_options,
-        default=status_options,
-    )
-    if selected_status and "status" in lost_df.columns:
-        lost_df = lost_df[lost_df["status"].isin(selected_status)]
-
-    # After filters, if nothing left
+    # Empty check
     if lost_df.empty:
         st.warning("No rows match the current filters.")
         return
